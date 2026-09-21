@@ -1,0 +1,249 @@
+@import "tailwindcss";
+
+:root {
+  --tl-bg: #08090c;
+  --tl-bg-elevated: #101218;
+  --tl-bg-card: #0d0f14;
+  --tl-border: #22262e;
+  --tl-text-primary: #eef1ee;
+  --tl-text-secondary: #93998f;
+  --tl-text-muted: #565d54;
+  --tl-accent: #c6ff1a;
+  --tl-accent-soft: #c6ff1a1f;
+  --tl-positive: #6ee06e;
+  --tl-negative: #ff5c5c;
+  --tl-warning: #f2c53c;
+  --tl-info: #4d8cf2;
+
+  --background: var(--tl-bg);
+  --foreground: var(--tl-text-primary);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-tl-bg: var(--tl-bg);
+  --color-tl-bg-elevated: var(--tl-bg-elevated);
+  --color-tl-bg-card: var(--tl-bg-card);
+  --color-tl-border: var(--tl-border);
+  --color-tl-text-primary: var(--tl-text-primary);
+  --color-tl-text-secondary: var(--tl-text-secondary);
+  --color-tl-text-muted: var(--tl-text-muted);
+  --color-tl-accent: var(--tl-accent);
+  --color-tl-positive: var(--tl-positive);
+  --color-tl-negative: var(--tl-negative);
+  --color-tl-warning: var(--tl-warning);
+  --color-tl-info: var(--tl-info);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: var(--tl-accent-soft);
+  color: var(--tl-text-primary);
+}
+
+* {
+  scrollbar-color: var(--tl-border) transparent;
+}
+
+@keyframes tl-flash-up {
+  0% { background-color: color-mix(in srgb, var(--tl-positive) 35%, transparent); }
+  100% { background-color: transparent; }
+}
+
+@keyframes tl-flash-down {
+  0% { background-color: color-mix(in srgb, var(--tl-negative) 35%, transparent); }
+  100% { background-color: transparent; }
+}
+
+.tl-flash-up {
+  animation: tl-flash-up 900ms ease-out;
+}
+
+.tl-flash-down {
+  animation: tl-flash-down 900ms ease-out;
+}
+
+@keyframes tl-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.tl-skeleton {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, white 6%, transparent) 25%,
+    color-mix(in srgb, white 12%, transparent) 37%,
+    color-mix(in srgb, white 6%, transparent) 63%
+  );
+  background-size: 200% 100%;
+  animation: tl-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes tl-star-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.5) rotate(-10deg); }
+  70% { transform: scale(0.9) rotate(4deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.tl-star-pop {
+  display: inline-block;
+  animation: tl-star-pop 420ms ease-out;
+}
+
+@keyframes tl-mega-glow {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tl-accent) 45%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--tl-accent) 0%, transparent); }
+}
+
+.tl-mega-whale {
+  animation: tl-mega-glow 2s ease-in-out infinite;
+  border-color: color-mix(in srgb, var(--tl-accent) 50%, var(--tl-border)) !important;
+}
+
+/* ---- Terminal aesthetic ---- */
+
+.tl-mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+.tl-label {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Window chrome: three dots, like a terminal title bar. Pass content as the
+   bar's label via a data attribute so this stays a pure CSS decoration. */
+.tl-window {
+  position: relative;
+  border: 1px solid var(--tl-border);
+  background: var(--tl-bg-card);
+}
+
+.tl-window-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--tl-border);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--tl-text-muted);
+  letter-spacing: 0.05em;
+}
+
+.tl-window-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--tl-border);
+}
+
+.tl-window-dot:last-of-type {
+  background: var(--tl-accent);
+}
+
+/* Corner brackets: the ⌐...¬ frame accents used around feature cards. */
+.tl-brackets {
+  position: relative;
+}
+
+.tl-brackets::before,
+.tl-brackets::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: var(--tl-accent);
+  opacity: 0.7;
+}
+
+.tl-brackets::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--tl-accent);
+  border-left: 2px solid var(--tl-accent);
+}
+
+.tl-brackets::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid var(--tl-accent);
+  border-right: 2px solid var(--tl-accent);
+}
+
+/* Subtle grid backdrop for hero/marketing sections. */
+.tl-grid-bg {
+  background-image:
+    linear-gradient(color-mix(in srgb, white 4%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, white 4%, transparent) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Horizontal ticker tape marquee — duplicate the content once and slide by
+   -50% so it loops seamlessly for any content width. */
+@keyframes tl-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.tl-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: tl-marquee 30s linear infinite;
+}
+
+.tl-marquee-viewport:hover .tl-marquee-track {
+  animation-play-state: paused;
+}
+
+/* CRT scanline overlay, toggled by adding .tl-crt to a container. */
+.tl-crt {
+  position: relative;
+}
+
+.tl-crt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, black 15%, transparent) 0,
+    color-mix(in srgb, black 15%, transparent) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.5;
+}
+
+@keyframes tl-caret-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.tl-caret::after {
+  content: "\2588";
+  margin-left: 2px;
+  color: var(--tl-accent);
+  animation: tl-caret-blink 1s step-end infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tl-marquee-track {
+    animation: none;
+  }
+  .tl-caret::after {
+    animation: none;
+  }
+}
