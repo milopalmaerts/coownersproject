@@ -12,17 +12,11 @@ import { Badge } from "@/components/ui/Badge";
 // serverless functions not supporting long-lived connections.
 const BINANCE_WS_URL = "wss://fstream.binance.com/ws/!forceOrder@arr";
 
-const TRACKED_PAIRS = new Set([
-  "BTCUSDT",
-  "ETHUSDT",
-  "SOLUSDT",
-  "LINKUSDT",
-  "AVAXUSDT",
-  "XRPUSDT",
-  "DOGEUSDT",
-  "ADAUSDT",
-]);
-
+// Exchange-wide, not limited to the 8 assets tracked elsewhere on the site —
+// liquidations on any single pair are infrequent enough that restricting to
+// 8 symbols made this feed sit at $0/$0 for long stretches. Binance Futures
+// liquidates something somewhere every few seconds market-wide, which is
+// the more honest "is this thing alive" signal.
 interface LiquidationEvent {
   id: string;
   symbol: string;
@@ -67,7 +61,7 @@ export function LiveLiquidationTicker() {
         try {
           const msg = JSON.parse(event.data) as BinanceForceOrderMessage;
           const { s: symbol, S: side, q, ap, T: time } = msg.o;
-          if (!TRACKED_PAIRS.has(symbol)) return;
+          if (!symbol.endsWith("USDT")) return;
 
           const price = Number(ap);
           const usdValue = Number(q) * price;
@@ -133,7 +127,8 @@ export function LiveLiquidationTicker() {
         }
       />
       <p className="text-xs text-tl-text-muted mb-3">
-        Real liquidations on Binance Futures, streamed directly to your
+        Real liquidations across all Binance Futures USDT pairs (not just the
+        assets tracked elsewhere on this site), streamed directly to your
         browser as they happen — not a historical summary. Totals below are
         for what&apos;s streamed in since you opened this page, not a fixed
         time window.
@@ -157,7 +152,7 @@ export function LiveLiquidationTicker() {
       {events.length === 0 ? (
         <p className="text-sm text-tl-text-muted">
           {status === "live"
-            ? "Waiting for the next liquidation on a tracked asset…"
+            ? "Waiting for the next liquidation…"
             : "Connecting to Binance…"}
         </p>
       ) : (

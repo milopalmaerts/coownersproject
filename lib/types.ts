@@ -1,4 +1,4 @@
-export type Timeframe = "1m" | "5m" | "15m" | "1H" | "4H" | "1D" | "1W";
+export type Timeframe = "15s" | "30s" | "1m" | "3m" | "5m" | "15m" | "1H" | "4H" | "1D" | "1W";
 
 export interface AssetTicker {
   symbol: string;
@@ -19,6 +19,10 @@ export interface Candle {
   low: number;
   close: number;
   volume: number;
+  // Taker buy volume within this candle (same units as `volume`) — lets us
+  // approximate net buy/sell pressure (CVD) without a raw trade feed.
+  // Optional: not every provider/mode can supply it.
+  takerBuyVolume?: number;
 }
 
 export interface GlobalStats {

@@ -1,8 +1,10 @@
 import { WhaleProvider } from "@/lib/providers/types";
 import { WhaleTransaction } from "@/lib/types";
 import { marketProvider } from "@/lib/providers";
-import { fetchLatestBtcBlockTxs } from "@/lib/providers/live/whale/bitcoinExplorer";
-import { fetchLatestEthBlockTxs } from "@/lib/providers/live/whale/ethereumExplorer";
+import { fetchRecentBtcBlockTxs } from "@/lib/providers/live/whale/bitcoinExplorer";
+import { fetchRecentEthBlockTxs } from "@/lib/providers/live/whale/ethereumExplorer";
+import { fetchRecentStablecoinTransfers } from "@/lib/providers/live/whale/stablecoinTransfers";
+import { lookupEthExchange } from "@/lib/providers/live/whale/exchangeAddresses";
 
 const SATS_PER_BTC = 100_000_000;
 
@@ -11,16 +13,19 @@ const SATS_PER_BTC = 100_000_000;
 // surfaced as a whale alert.
 const BTC_THRESHOLD_USD = 1_000_000;
 const ETH_THRESHOLD_USD = 500_000;
+const STABLECOIN_THRESHOLD_USD = 500_000;
 
-// Detects large transfers by scanning the most recent confirmed block on
-// each chain — no address-clustering database, so unlike Whale Alert we
-// can't label a wallet as "exchange" vs personal; both sides are reported
-// as "Unknown wallet" rather than guessing. usdValue is gross transaction
-// output value (approximate), not a verified net transfer amount.
+// Detects large transfers by scanning the most recent confirmed blocks on
+// each chain. BTC addresses aren't labeled — exchanges rotate deposit
+// addresses constantly, so we'd rather say "Unknown wallet" than guess
+// wrong. ETH gets a small curated list of well-known, publicly documented
+// exchange hot wallets (see exchangeAddresses.ts) — most ETH transfers still
+// won't match anything and stay "Unknown wallet" too. usdValue is gross
+// transaction output value (approximate), not a verified net transfer.
 export class LiveWhaleProvider implements WhaleProvider {
   private async getBtcWhales(): Promise<WhaleTransaction[]> {
     const [txs, btcPrice] = await Promise.all([
-      fetchLatestBtcBlockTxs(),
+      fetchRecentBtcBlockTxs(),
       marketProvider.getPrice("BTC"),
     ]);
 
@@ -52,7 +57,7 @@ export class LiveWhaleProvider implements WhaleProvider {
     }
 
     const [txs, ethPrice] = await Promise.all([
-      fetchLatestEthBlockTxs(),
+      fetchRecentEthBlockTxs(),
       marketProvider.getPrice("ETH"),
     ]);
 
@@ -63,28 +68,75 @@ export class LiveWhaleProvider implements WhaleProvider {
         return { tx, usdValue };
       })
       .filter(({ usdValue }) => usdValue >= ETH_THRESHOLD_USD)
-      .map(({ tx, usdValue }): WhaleTransaction => ({
-        id: `eth-${tx.hash}`,
-        symbol: "ETH",
-        usdValue,
-        fromLabel: "Unknown wallet",
-        toLabel: "Unknown wallet",
-        fromType: "unknown",
-        toType: "unknown",
-        timestamp: new Date(tx.blockTimestamp * 1000).toISOString(),
-        txUrl: `https://etherscan.io/tx/${tx.hash}`,
-      }));
+      .map(({ tx, usdValue }): WhaleTransaction => {
+        const fromExchange = lookupEthExchange(tx.from);
+        const toExchange = lookupEthExchange(tx.to);
+        return {
+          id: `eth-${tx.hash}`,
+          symbol: "ETH",
+          usdValue,
+          fromLabel: fromExchange ?? "Unknown wallet",
+          toLabel: toExchange ?? "Unknown wallet",
+          fromType: fromExchange ? "exchange" : "unknown",
+          toType: toExchange ? "exchange" : "unknown",
+          timestamp: new Date(tx.blockTimestamp * 1000).toISOString(),
+          txUrl: `https://etherscan.io/tx/${tx.hash}`,
+        };
+      });
+  }
+
+  private async getStablecoinWhales(): Promise<WhaleTransaction[]> {
+    if (!process.env.ETHERSCAN_API_KEY) {
+      return [];
+    }
+
+    const transfers = await fetchRecentStablecoinTransfers();
+
+    return transfers
+      .filter((t) => t.usdValue >= STABLECOIN_THRESHOLD_USD)
+      .map((t): WhaleTransaction => {
+        const fromExchange = lookupEthExchange(t.from);
+        const toExchange = lookupEthExchange(t.to);
+        return {
+          id: `${t.symbol.toLowerCase()}-${t.txHash}`,
+          symbol: t.symbol,
+          usdValue: t.usdValue,
+          fromLabel: fromExchange ?? "Unknown wallet",
+          toLabel: toExchange ?? "Unknown wallet",
+          fromType: fromExchange ? "exchange" : "unknown",
+          toType: toExchange ? "exchange" : "unknown",
+          timestamp: new Date(t.blockTimestamp * 1000).toISOString(),
+          txUrl: `https://etherscan.io/tx/${t.txHash}`,
+        };
+      });
   }
 
   async getLargeTransactions(limit = 20): Promise<WhaleTransaction[]> {
-    const [btc, eth] = await Promise.all([
+    const [btc, eth, stablecoins] = await Promise.all([
       this.getBtcWhales(),
-      this.getEthWhales(),
+      this.getEthWhales().catch(() => []),
+      this.getStablecoinWhales().catch(() => []),
     ]);
 
-    return [...btc, ...eth]
-      .sort((a, b) => b.usdValue - a.usdValue)
-      .slice(0, limit);
+    // Round-robin across asset groups (each already sorted by size) before
+    // truncating to `limit` — a pure global sort-by-value would let one
+    // asset's naturally larger transfer sizes crowd out every other asset.
+    const groups = [
+      [...btc].sort((a, b) => b.usdValue - a.usdValue),
+      [...eth].sort((a, b) => b.usdValue - a.usdValue),
+      [...stablecoins].sort((a, b) => b.usdValue - a.usdValue),
+    ];
+
+    const merged: WhaleTransaction[] = [];
+    let cursor = 0;
+    while (merged.length < limit && groups.some((g) => cursor < g.length)) {
+      for (const group of groups) {
+        if (cursor < group.length) merged.push(group[cursor]);
+      }
+      cursor++;
+    }
+
+    return merged.slice(0, limit).sort((a, b) => b.usdValue - a.usdValue);
   }
 
   async getLargeTransactionsBySymbol(

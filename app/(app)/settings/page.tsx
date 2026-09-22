@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { hasEtherscanApiKey, hasMarketApiKey, isDemoMode } from "@/lib/providers";
 import { hasRedisConfig } from "@/lib/alerts/redis";
@@ -6,6 +7,8 @@ import { getCurrentUser, hasSupabaseConfig } from "@/lib/supabase/server";
 import { signOutAction } from "@/lib/auth/actions";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { ProviderHealthSection } from "@/components/settings/ProviderHealthSection";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
@@ -18,6 +21,10 @@ export default async function SettingsPage() {
           Platform configuration and data source status.
         </p>
       </div>
+
+      <Suspense fallback={<SkeletonCard />}>
+        <ProviderHealthSection />
+      </Suspense>
 
       <Card>
         <CardHeader title="Data Mode" />
@@ -78,12 +85,12 @@ export default async function SettingsPage() {
         <CardHeader title="Whale Monitoring" />
         <div className="flex items-center gap-2">
           <Badge tone={hasEtherscanApiKey ? "positive" : "neutral"}>
-            {hasEtherscanApiKey ? "BTC + ETH" : "BTC ONLY"}
+            {hasEtherscanApiKey ? "BTC + ETH + USDT/USDC" : "BTC ONLY"}
           </Badge>
           <span className="text-sm text-tl-text-secondary">
             {hasEtherscanApiKey
-              ? "Etherscan key set — detecting BTC and ETH whale transactions."
-              : "Set ETHERSCAN_API_KEY to also detect ETH whale transactions."}
+              ? "Etherscan key set — detecting BTC, native ETH, and USDT/USDC transfers on Ethereum."
+              : "Set ETHERSCAN_API_KEY to also detect ETH and stablecoin whale transfers."}
           </span>
         </div>
       </Card>

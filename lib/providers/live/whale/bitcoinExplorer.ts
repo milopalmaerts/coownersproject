@@ -1,11 +1,20 @@
 // mempool.space's public API — free, no key, no published hard rate limit
-// (fair-use). Used to scan the most recent confirmed block for large
-// transfers. This reads gross transaction output value, not net transferred
-// amount (a tx can include change outputs back to the sender), so treat
-// usdValue as an approximation of transaction size, same as most whale
-// trackers do without proprietary UTXO clustering.
+// (fair-use). Used to scan the most recent confirmed blocks for large
+// transfers. usdValue is based on the tx's LARGEST single output, not the
+// sum of all outputs — summing was tried first and produced wildly inflated
+// numbers (some batch/consolidation payouts from exchanges summed to
+// hundreds of millions of dollars), which both crowded out every other
+// whale entry and mischaracterized a batch payout as one giant transfer.
+// The largest single output is what every free whale tracker uses without
+// proprietary UTXO clustering, and reads as "size of the biggest payment in
+// this transaction" rather than "total money that touched this tx".
 const MEMPOOL_BASE = "https://mempool.space/api";
 const MAX_PAGES = 20; // 25 txs/page -> up to 500 txs scanned per block
+
+// BTC blocks land roughly every ~10 min, so a single block is a thin window.
+// Scanning the last 3 (~30 min) gives meaningfully more whale hits without
+// hammering mempool.space.
+const BLOCKS_TO_SCAN = 3;
 
 interface MempoolTx {
   txid: string;
@@ -13,7 +22,9 @@ interface MempoolTx {
 }
 
 interface MempoolBlock {
+  id: string;
   timestamp: number; // unix seconds
+  previousblockhash: string;
 }
 
 export interface BtcCandidateTx {
@@ -29,7 +40,26 @@ async function mempoolFetch(path: string): Promise<Response> {
   });
 }
 
-export async function fetchLatestBtcBlockTxs(): Promise<BtcCandidateTx[]> {
+async function fetchBlockTxs(hash: string, timestamp: number): Promise<BtcCandidateTx[]> {
+  const txs: BtcCandidateTx[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const index = page * 25;
+    const res = await mempoolFetch(`/block/${hash}/txs/${index}`);
+    if (!res.ok) break;
+    const batch = (await res.json()) as MempoolTx[];
+    if (batch.length === 0) break;
+
+    for (const tx of batch) {
+      const largestOutputSats = tx.vout.reduce((max, out) => Math.max(max, out.value), 0);
+      txs.push({ txid: tx.txid, totalSats: largestOutputSats, blockTimestamp: timestamp });
+    }
+
+    if (batch.length < 25) break;
+  }
+  return txs;
+}
+
+export async function fetchRecentBtcBlockTxs(): Promise<BtcCandidateTx[]> {
   const heightRes = await mempoolFetch("/blocks/tip/height");
   if (!heightRes.ok) {
     throw new Error(`mempool.space tip height failed: ${heightRes.status}`);
@@ -40,29 +70,19 @@ export async function fetchLatestBtcBlockTxs(): Promise<BtcCandidateTx[]> {
   if (!hashRes.ok) {
     throw new Error(`mempool.space block hash failed: ${hashRes.status}`);
   }
-  const hash = await hashRes.text();
+  let hash = await hashRes.text();
 
-  const blockRes = await mempoolFetch(`/block/${hash}`);
-  if (!blockRes.ok) {
-    throw new Error(`mempool.space block info failed: ${blockRes.status}`);
-  }
-  const block = (await blockRes.json()) as MempoolBlock;
+  const allTxs: BtcCandidateTx[] = [];
+  for (let i = 0; i < BLOCKS_TO_SCAN; i++) {
+    const blockRes = await mempoolFetch(`/block/${hash}`);
+    if (!blockRes.ok) break;
+    const block = (await blockRes.json()) as MempoolBlock;
 
-  const txs: BtcCandidateTx[] = [];
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const index = page * 25;
-    const res = await mempoolFetch(`/block/${hash}/txs/${index}`);
-    if (!res.ok) break;
-    const batch = (await res.json()) as MempoolTx[];
-    if (batch.length === 0) break;
+    allTxs.push(...(await fetchBlockTxs(hash, block.timestamp)));
 
-    for (const tx of batch) {
-      const totalSats = tx.vout.reduce((sum, out) => sum + out.value, 0);
-      txs.push({ txid: tx.txid, totalSats, blockTimestamp: block.timestamp });
-    }
-
-    if (batch.length < 25) break;
+    if (!block.previousblockhash) break;
+    hash = block.previousblockhash;
   }
 
-  return txs;
+  return allTxs;
 }

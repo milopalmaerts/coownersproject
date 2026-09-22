@@ -2,7 +2,7 @@ import { whaleProvider } from "@/lib/providers";
 import { formatRelativeTime, formatUsd } from "@/lib/format";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { isMegaWhale } from "@/lib/whaleThresholds";
+import { isMegaWhale, getFlowHint } from "@/lib/whaleThresholds";
 import { WhaleSoundAlert } from "@/components/dashboard/WhaleSoundAlert";
 
 // Its own async component (not inlined in the page) so it can sit behind a
@@ -22,6 +22,7 @@ export async function WhaleActivitySection() {
         <ul className="divide-y divide-tl-border">
           {whaleTxs.map((tx) => {
             const mega = isMegaWhale(tx.symbol, tx.usdValue);
+            const flow = getFlowHint(tx.fromType, tx.toType);
             return (
             <li
               key={tx.id}
@@ -29,7 +30,7 @@ export async function WhaleActivitySection() {
                 mega ? "tl-mega-whale border" : ""
               }`}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span>🐋</span>
                 <span className="text-tl-text-primary font-medium">
                   {tx.symbol}
@@ -38,6 +39,11 @@ export async function WhaleActivitySection() {
                   {tx.fromLabel} → {tx.toLabel}
                 </span>
                 {mega && <Badge tone="warning">MEGA</Badge>}
+                {flow && (
+                  <Badge tone={flow.tone === "positive" ? "positive" : "negative"}>
+                    {flow.label}
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <span className="tabular-nums text-tl-text-primary">

@@ -1,15 +1,19 @@
 import { notFound } from "next/navigation";
 import {
   derivativesProvider,
+  isDemoMode,
   marketProvider,
   newsProvider,
   whaleProvider,
 } from "@/lib/providers";
+import { findTrackedAsset } from "@/lib/providers/live/symbolMap";
 import { UnknownAssetError } from "@/lib/errors";
 import { formatPrice, formatRelativeTime, formatUsd } from "@/lib/format";
 import { Timeframe } from "@/lib/types";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { CandleChart } from "@/components/markets/CandleChart";
+import { CvdChart } from "@/components/markets/CvdChart";
+import { LiveCandleChart } from "@/components/markets/LiveCandleChart";
 import { TimeframeSelector } from "@/components/markets/TimeframeSelector";
 import { NewsList } from "@/components/news/NewsList";
 import { WatchlistStarButton } from "@/components/watchlist/WatchlistStarButton";
@@ -17,7 +21,9 @@ import { LiveTradeTape } from "@/components/markets/LiveTradeTape";
 import { LivePrice } from "@/components/dashboard/LivePrice";
 import { LivePctBadge } from "@/components/dashboard/LivePctBadge";
 
-const VALID_TIMEFRAMES: Timeframe[] = ["1m", "5m", "15m", "1H", "4H", "1D", "1W"];
+const VALID_TIMEFRAMES: Timeframe[] = ["15s", "30s", "1m", "3m", "5m", "15m", "1H", "4H", "1D", "1W"];
+const CVD_TIMEFRAMES: Timeframe[] = ["3m", "5m", "15m"];
+const LIVE_BUILD_TIMEFRAMES: Record<string, number> = { "15s": 15, "30s": 30 };
 
 export default async function CoinPage({
   params,
@@ -48,8 +54,12 @@ export default async function CoinPage({
     .catch(() => []);
   const fundingPromise = derivativesProvider.getFundingRates().catch(() => []);
 
+  const isLiveBuiltTimeframe = !isDemoMode && timeframe in LIVE_BUILD_TIMEFRAMES;
+
   const [candles] = await Promise.all([
-    marketProvider.getHistoricalData(symbol, timeframe),
+    isLiveBuiltTimeframe
+      ? Promise.resolve([])
+      : marketProvider.getHistoricalData(symbol, timeframe),
   ]);
   const news = await newsPromise;
   const whaleTxs = await whalePromise;
@@ -82,8 +92,27 @@ export default async function CoinPage({
           <CardHeader title="Chart" />
           <TimeframeSelector symbol={ticker.symbol} active={timeframe} />
         </div>
-        <CandleChart candles={candles} />
+        {isLiveBuiltTimeframe ? (
+          <LiveCandleChart
+            pair={findTrackedAsset(ticker.symbol).binancePair}
+            intervalSeconds={LIVE_BUILD_TIMEFRAMES[timeframe]}
+          />
+        ) : (
+          <CandleChart candles={candles} />
+        )}
       </Card>
+
+      {CVD_TIMEFRAMES.includes(timeframe) && (
+        <Card>
+          <CardHeader title="CVD (Cumulative Volume Delta)" />
+          <p className="text-xs text-tl-text-muted mb-2">
+            Approximated from Binance taker-buy volume per candle — flags
+            when price makes a new high/low that order flow doesn&apos;t
+            confirm. A heuristic signal, not a guarantee.
+          </p>
+          <CvdChart candles={candles} />
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>

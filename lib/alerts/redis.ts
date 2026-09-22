@@ -58,6 +58,17 @@ export async function pushRecentAlerts(alerts: LiveAlert[]): Promise<void> {
   await client.ltrim(RECENT_ALERTS_KEY, 0, MAX_RECENT_ALERTS - 1);
 }
 
+export async function pingRedis(): Promise<boolean> {
+  if (!hasRedisConfig) return false;
+  try {
+    await getRedis().ping();
+    return true;
+  } catch (err) {
+    console.error("[redis] ping failed:", err);
+    return false;
+  }
+}
+
 export async function getRecentAlerts(): Promise<LiveAlert[]> {
   if (!hasRedisConfig) return [];
   const raw = await getRedis().lrange<string>(RECENT_ALERTS_KEY, 0, MAX_RECENT_ALERTS - 1);

@@ -20,8 +20,14 @@ function findAsset(symbol: string): AssetTicker {
 
 function timeframeToSeconds(timeframe: Timeframe): number {
   switch (timeframe) {
+    case "15s":
+      return 15;
+    case "30s":
+      return 30;
     case "1m":
       return 60;
+    case "3m":
+      return 3 * 60;
     case "5m":
       return 5 * 60;
     case "15m":
@@ -90,8 +96,13 @@ export class DemoMarketProvider implements MarketProvider {
       const high = Math.max(open, close) * (1 + rand() * 0.004);
       const low = Math.min(open, close) * (1 - rand() * 0.004);
       const volume = (asset.volume24h / points) * (0.5 + rand());
+      // Bias the synthetic taker-buy split toward the candle's own
+      // direction so demo CVD roughly tracks demo price, same relationship
+      // real data has.
+      const buyRatio = Math.min(0.9, Math.max(0.1, 0.5 + (close > open ? 1 : -1) * rand() * 0.3));
+      const takerBuyVolume = volume * buyRatio;
 
-      candles.push({ time, open, high, low, close, volume });
+      candles.push({ time, open, high, low, close, volume, takerBuyVolume });
       price = close;
     }
 

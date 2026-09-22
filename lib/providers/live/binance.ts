@@ -3,7 +3,15 @@ import { Candle, Timeframe } from "@/lib/types";
 const BINANCE_BASE_URL = "https://api.binance.com/api/v3";
 
 const TIMEFRAME_TO_INTERVAL: Record<Timeframe, string> = {
+  // Binance has no 15s/30s kline interval — these two are never actually
+  // requested through this REST path. The coin page intercepts them and
+  // builds live candles client-side from the raw trade stream instead (see
+  // lib/hooks/useLiveCandles.ts). Mapped to "1s" here only so this record
+  // stays exhaustively typed.
+  "15s": "1s",
+  "30s": "1s",
   "1m": "1m",
+  "3m": "3m",
   "5m": "5m",
   "15m": "15m",
   "1H": "1h",
@@ -12,8 +20,12 @@ const TIMEFRAME_TO_INTERVAL: Record<Timeframe, string> = {
   "1W": "1w",
 };
 
-// [openTime, open, high, low, close, volume, closeTime, ...]
-type BinanceKline = [number, string, string, string, string, string, number, ...unknown[]];
+// [openTime, open, high, low, close, volume, closeTime, quoteAssetVolume,
+//  numberOfTrades, takerBuyBaseAssetVolume, takerBuyQuoteAssetVolume, ignore]
+type BinanceKline = [
+  number, string, string, string, string, string,
+  number, string, number, string, string, string
+];
 
 export async function fetchBinanceKlines(
   pair: string,
@@ -39,5 +51,6 @@ export async function fetchBinanceKlines(
     low: Number(k[3]),
     close: Number(k[4]),
     volume: Number(k[5]),
+    takerBuyVolume: Number(k[9]),
   }));
 }

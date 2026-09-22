@@ -2,7 +2,7 @@ import { hasEtherscanApiKey, isDemoMode, whaleProvider } from "@/lib/providers";
 import { formatRelativeTime, formatUsd } from "@/lib/format";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { WHALE_THRESHOLDS, isMegaWhale } from "@/lib/whaleThresholds";
+import { WHALE_THRESHOLDS, isMegaWhale, getFlowHint } from "@/lib/whaleThresholds";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 
 const DEFAULT_THRESHOLDS = WHALE_THRESHOLDS;
@@ -18,16 +18,22 @@ export default async function WhalesPage() {
           Whale Monitor
         </h1>
         <p className="text-sm text-tl-text-secondary">
-          Large on-chain transactions detected by scanning the latest BTC and
-          ETH blocks. We have no address-labeling database, so a transaction
-          is never described as a &quot;buy&quot; or &quot;sell&quot;, and
-          both sides show as &quot;Unknown wallet&quot;. Other tracked
+          Large on-chain transactions from the last ~30 min of BTC blocks,
+          ~4 min of native ETH transfers, and ~1 hour of USDT/USDC transfers
+          on Ethereum (most large Ethereum-chain money movement is in
+          stablecoins, not native ETH). BTC addresses aren&apos;t labeled —
+          exchanges rotate deposit addresses too often to identify reliably.
+          Ethereum-side transfers check against a small curated list of known
+          exchange hot wallets (Binance, Coinbase, Kraken, OKX); when one side
+          matches, we show a directional read — otherwise both sides stay
+          &quot;Unknown wallet&quot; rather than guessing. Other tracked
           assets (SOL, LINK, AVAX, XRP, DOGE, ADA) aren&apos;t monitored yet.
         </p>
         {!isDemoMode && !hasEtherscanApiKey && (
           <p className="text-xs text-tl-warning mt-2">
             ETHERSCAN_API_KEY isn&apos;t set — showing BTC only. Get a free
-            key at etherscan.io/apis to also detect ETH whale transactions.
+            key at etherscan.io/apis to also detect ETH and USDT/USDC whale
+            transfers.
           </p>
         )}
       </div>
@@ -68,6 +74,7 @@ export default async function WhalesPage() {
         <ul className="divide-y divide-tl-border">
           {transactions.map((tx) => {
             const mega = isMegaWhale(tx.symbol, tx.usdValue);
+            const flow = getFlowHint(tx.fromType, tx.toType);
             return (
             <li
               key={tx.id}
@@ -85,6 +92,13 @@ export default async function WhalesPage() {
                   <div className="text-xs text-tl-text-secondary">
                     {tx.fromLabel} → {tx.toLabel}
                   </div>
+                  {flow && (
+                    <div className="mt-1">
+                      <Badge tone={flow.tone === "positive" ? "positive" : "negative"}>
+                        {flow.label}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-4 text-xs">

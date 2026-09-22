@@ -12,10 +12,27 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const TITLE = "TradingLegends — Crypto Intelligence Platform";
+const DESCRIPTION =
+  "Live crypto market data, whale tracking, news, liquidations and automated alerts — in one terminal.";
+
 export const metadata: Metadata = {
-  title: "TradingLegends — Crypto Intelligence Platform",
-  description:
-    "Track markets, whale activity, news and real-time crypto events in one place.",
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: SITE_URL,
+    siteName: "TradingLegends",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

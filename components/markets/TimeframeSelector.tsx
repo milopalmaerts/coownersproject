@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Timeframe } from "@/lib/types";
 
-const TIMEFRAMES: Timeframe[] = ["1m", "5m", "15m", "1H", "4H", "1D", "1W"];
+const TIMEFRAMES: Timeframe[] = ["15s", "30s", "1m", "3m", "5m", "15m", "1H", "4H", "1D", "1W"];
 
 export function TimeframeSelector({
   symbol,
