@@ -7,19 +7,28 @@ import {
   LineSeries,
   ColorType,
   IChartApi,
+  ISeriesApi,
+  ISeriesMarkersPluginApi,
   SeriesMarker,
   Time,
 } from "lightweight-charts";
 import { Candle } from "@/lib/types";
-import { computeCvdSeries, detectDivergences } from "@/lib/cvd";
+import { computeCvdSeries, detectDivergences, CvdPoint } from "@/lib/cvd";
 import { formatRelativeTime } from "@/lib/format";
 
 export function CvdChart({ candles }: { candles: Candle[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const divergenceLinesRef = useRef<ISeriesApi<"Line">[]>([]);
+  const hasFitRef = useRef(false);
 
-  const cvd = computeCvdSeries(candles);
+  const cvd: CvdPoint[] = computeCvdSeries(candles);
   const divergences = detectDivergences(candles, cvd);
 
+  // Chart + series created once — recreating on every data update (as this
+  // used to do) reset zoom/pan on every new candle.
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -38,26 +47,14 @@ export function CvdChart({ candles }: { candles: Candle[] }) {
       width: containerRef.current.clientWidth,
       height: 160,
     });
+    chartRef.current = chart;
 
     const series = chart.addSeries(LineSeries, {
       color: "#c6ff1a",
       lineWidth: 2,
     });
-
-    series.setData(cvd.map((p) => ({ time: p.time as Time, value: p.cvd })));
-
-    if (divergences.length > 0) {
-      const markers: SeriesMarker<Time>[] = divergences.map((d) => ({
-        time: d.time as Time,
-        position: d.type === "bearish" ? "aboveBar" : "belowBar",
-        color: d.type === "bearish" ? "#ff5c5c" : "#6ee06e",
-        shape: d.type === "bearish" ? "arrowDown" : "arrowUp",
-        text: d.type === "bearish" ? "BEAR DIV" : "BULL DIV",
-      }));
-      createSeriesMarkers(series, markers);
-    }
-
-    chart.timeScale().fitContent();
+    seriesRef.current = series;
+    markersRef.current = createSeriesMarkers(series, []);
 
     const handleResize = () => {
       if (containerRef.current) {
@@ -69,8 +66,61 @@ export function CvdChart({ candles }: { candles: Candle[] }) {
     return () => {
       window.removeEventListener("resize", handleResize);
       chart.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
+      markersRef.current = null;
+      hasFitRef.current = false;
     };
-  }, [candles, cvd, divergences]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    if (!chart || !series) return;
+
+    series.setData(cvd.map((p) => ({ time: p.time as Time, value: p.cvd })));
+
+    const markers: SeriesMarker<Time>[] = divergences.map((d) => ({
+      time: d.time as Time,
+      position: d.type === "bearish" ? "aboveBar" : "belowBar",
+      color: d.type === "bearish" ? "#ff5c5c" : "#6ee06e",
+      shape: d.type === "bearish" ? "arrowDown" : "arrowUp",
+      text: d.type === "bearish" ? "BEAR DIV" : "BULL DIV",
+    }));
+    markersRef.current?.setMarkers(markers);
+
+    // Connector line between the exact two CVD points being compared — the
+    // same pair drawn on the price chart, so the divergence is visible
+    // rather than only described in text.
+    divergenceLinesRef.current.forEach((line) => chart.removeSeries(line));
+    divergenceLinesRef.current = [];
+    divergences.forEach((d) => {
+      const fromPoint = cvd[d.fromIndex];
+      const toPoint = cvd[d.index];
+      if (!fromPoint || !toPoint) return;
+
+      const line = chart.addSeries(LineSeries, {
+        color: d.type === "bearish" ? "#ff5c5c" : "#6ee06e",
+        lineWidth: 2,
+        lineStyle: 2, // dashed
+        lastValueVisible: false,
+        priceLineVisible: false,
+        crosshairMarkerVisible: false,
+      });
+      line.setData([
+        { time: fromPoint.time as Time, value: fromPoint.cvd },
+        { time: toPoint.time as Time, value: toPoint.cvd },
+      ]);
+      divergenceLinesRef.current.push(line);
+    });
+
+    if (!hasFitRef.current && cvd.length > 0) {
+      chart.timeScale().fitContent();
+      hasFitRef.current = true;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candles]);
 
   const hasTakerData = candles.some((c) => c.takerBuyVolume !== undefined);
 

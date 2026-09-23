@@ -24,8 +24,12 @@ export type DivergenceType = "bullish" | "bearish";
 
 export interface Divergence {
   type: DivergenceType;
-  time: number; // the more recent candle's time
-  index: number; // index into the candles/cvd arrays
+  time: number; // the more recent (second) pivot's time
+  index: number; // index of the more recent pivot into the candles/cvd arrays
+  fromTime: number; // the earlier (first) pivot's time
+  fromIndex: number; // index of the earlier pivot — together with `index`,
+  // this is the exact pair being compared, so it can be drawn as a
+  // connecting line on both the price chart and the CVD chart.
   description: string;
 }
 
@@ -67,6 +71,8 @@ export function detectDivergences(candles: Candle[], cvd: CvdPoint[], window = 3
         type: "bearish",
         time: candles[i2].time,
         index: i2,
+        fromTime: candles[i1].time,
+        fromIndex: i1,
         description: "Price higher high, CVD lower high — buying pressure not confirming the new high.",
       });
     }
@@ -82,6 +88,8 @@ export function detectDivergences(candles: Candle[], cvd: CvdPoint[], window = 3
         type: "bullish",
         time: candles[i2].time,
         index: i2,
+        fromTime: candles[i1].time,
+        fromIndex: i1,
         description: "Price lower low, CVD higher low — selling pressure drying up on the new low.",
       });
     }

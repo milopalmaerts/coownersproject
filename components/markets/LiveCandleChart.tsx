@@ -1,6 +1,7 @@
 "use client";
 
 import { useLiveCandles } from "@/lib/hooks/useLiveCandles";
+import { computeCvdSeries, detectDivergences } from "@/lib/cvd";
 import { CandleChart } from "@/components/markets/CandleChart";
 import { CvdChart } from "@/components/markets/CvdChart";
 import { Badge } from "@/components/ui/Badge";
@@ -15,6 +16,8 @@ export function LiveCandleChart({
   intervalSeconds: number;
 }) {
   const { candles, status, tradeCount } = useLiveCandles(pair, intervalSeconds);
+  const hasCvd = candles.length >= MIN_CANDLES_FOR_CVD;
+  const divergences = hasCvd ? detectDivergences(candles, computeCvdSeries(candles)) : [];
 
   return (
     <div className="space-y-4">
@@ -34,10 +37,10 @@ export function LiveCandleChart({
           {status === "live" ? "Waiting for the first trade…" : "Connecting to Binance…"}
         </div>
       ) : (
-        <CandleChart candles={candles} />
+        <CandleChart candles={candles} divergences={divergences} />
       )}
 
-      {candles.length >= MIN_CANDLES_FOR_CVD && (
+      {hasCvd && (
         <div>
           <p className="tl-label text-xs text-tl-text-secondary mb-2 flex items-center gap-2">
             <span className="text-tl-accent">▸</span>

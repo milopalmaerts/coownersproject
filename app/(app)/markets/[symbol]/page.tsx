@@ -11,6 +11,7 @@ import { UnknownAssetError } from "@/lib/errors";
 import { formatPrice, formatRelativeTime, formatUsd } from "@/lib/format";
 import { Timeframe } from "@/lib/types";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { computeCvdSeries, detectDivergences } from "@/lib/cvd";
 import { CandleChart } from "@/components/markets/CandleChart";
 import { CvdChart } from "@/components/markets/CvdChart";
 import { LiveCandleChart } from "@/components/markets/LiveCandleChart";
@@ -69,6 +70,11 @@ export default async function CoinPage({
     (f) => f.symbol.toLowerCase() === symbol.toLowerCase()
   );
 
+  const cvdSeries = CVD_TIMEFRAMES.includes(timeframe) ? computeCvdSeries(candles) : [];
+  const divergences = CVD_TIMEFRAMES.includes(timeframe)
+    ? detectDivergences(candles, cvdSeries)
+    : [];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -98,7 +104,7 @@ export default async function CoinPage({
             intervalSeconds={LIVE_BUILD_TIMEFRAMES[timeframe]}
           />
         ) : (
-          <CandleChart candles={candles} />
+          <CandleChart candles={candles} divergences={divergences} />
         )}
       </Card>
 

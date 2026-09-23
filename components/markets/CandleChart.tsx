@@ -4,86 +4,30 @@ import { useEffect, useRef, useState } from "react";
 import {
   createChart,
   CandlestickSeries,
+  LineSeries,
   ColorType,
   IChartApi,
   ISeriesApi,
+  Time,
 } from "lightweight-charts";
 import { Candle } from "@/lib/types";
+import { Divergence } from "@/lib/cvd";
 import { computeVolumeProfile } from "@/lib/volumeProfile";
 
-export function CandleChart({ candles }: { candles: Candle[] }) {
+export function CandleChart({
+  candles,
+  divergences = [],
+}: {
+  candles: Candle[];
+  divergences?: Divergence[];
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const divergenceLinesRef = useRef<ISeriesApi<"Line">[]>([]);
+  const hasFitRef = useRef(false);
   const [showVolumeProfile, setShowVolumeProfile] = useState(false);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const chart = createChart(containerRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: "transparent" },
-        textColor: "#9297a3",
-        fontSize: 12,
-      },
-      grid: {
-        vertLines: { color: "#23262f" },
-        horzLines: { color: "#23262f" },
-      },
-      rightPriceScale: { borderColor: "#23262f" },
-      timeScale: { borderColor: "#23262f" },
-      width: containerRef.current.clientWidth,
-      height: 360,
-    });
-    chartRef.current = chart;
-
-    const series = chart.addSeries(CandlestickSeries, {
-      upColor: "#2fd480",
-      downColor: "#f24d5c",
-      borderVisible: false,
-      wickUpColor: "#2fd480",
-      wickDownColor: "#f24d5c",
-    });
-    seriesRef.current = series;
-
-    series.setData(
-      candles.map((c) => ({
-        time: c.time as never,
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close,
-      }))
-    );
-
-    chart.timeScale().fitContent();
-
-    const draw = () => drawVolumeProfile();
-    chart.timeScale().subscribeVisibleLogicalRangeChange(draw);
-
-    const handleResize = () => {
-      if (containerRef.current) {
-        chart.applyOptions({ width: containerRef.current.clientWidth });
-        if (canvasRef.current) {
-          canvasRef.current.width = containerRef.current.clientWidth;
-          canvasRef.current.height = 360;
-        }
-      }
-      draw();
-    };
-    window.addEventListener("resize", handleResize);
-    handleResize();
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      chart.timeScale().unsubscribeVisibleLogicalRangeChange(draw);
-      chart.remove();
-      chartRef.current = null;
-      seriesRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [candles]);
 
   // Effects can't see fresh state inside the chart's own event subscriptions
   // (they're set up once), so a ref mirrors the toggle for the draw callback.
@@ -121,17 +65,133 @@ export function CandleChart({ candles }: { candles: Candle[] }) {
     });
   }
 
+  // Chart + series are created exactly once — recreating them on every data
+  // update (as this used to do) destroyed the user's zoom/pan on every new
+  // candle, since a fresh chart always starts fitted to content.
   useEffect(() => {
-    showVolumeProfileRef.current = showVolumeProfile;
+    if (!containerRef.current) return;
+
+    const chart = createChart(containerRef.current, {
+      layout: {
+        background: { type: ColorType.Solid, color: "transparent" },
+        textColor: "#9297a3",
+        fontSize: 12,
+      },
+      grid: {
+        vertLines: { color: "#23262f" },
+        horzLines: { color: "#23262f" },
+      },
+      rightPriceScale: { borderColor: "#23262f" },
+      timeScale: { borderColor: "#23262f" },
+      width: containerRef.current.clientWidth,
+      height: 360,
+    });
+    chartRef.current = chart;
+
+    const series = chart.addSeries(CandlestickSeries, {
+      upColor: "#2fd480",
+      downColor: "#f24d5c",
+      borderVisible: false,
+      wickUpColor: "#2fd480",
+      wickDownColor: "#f24d5c",
+    });
+    seriesRef.current = series;
+
+    const draw = () => drawVolumeProfile();
+    chart.timeScale().subscribeVisibleLogicalRangeChange(draw);
+
+    const handleResize = () => {
+      if (containerRef.current) {
+        chart.applyOptions({ width: containerRef.current.clientWidth });
+        if (canvasRef.current) {
+          canvasRef.current.width = containerRef.current.clientWidth;
+          canvasRef.current.height = 360;
+        }
+      }
+      draw();
+    };
+    window.addEventListener("resize", handleResize);
+    handleResize();
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(draw);
+      chart.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
+      hasFitRef.current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Data updates just update the existing series — zoom/pan survive. Only
+  // the very first load auto-fits; after that the user's own view sticks,
+  // including while live candles keep streaming in.
+  useEffect(() => {
+    const series = seriesRef.current;
+    if (!series || !chartRef.current) return;
+
+    series.setData(
+      candles.map((c) => ({
+        time: c.time as never,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      }))
+    );
+
+    if (!hasFitRef.current && candles.length > 0) {
+      chartRef.current.timeScale().fitContent();
+      hasFitRef.current = true;
+    }
+
     drawVolumeProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showVolumeProfile, candles]);
+  }, [candles]);
+
+  // Divergence connector lines — a two-point line series per divergence,
+  // joining the exact pair of swing points the label refers to, so it's
+  // visible on the price chart itself rather than just described in text.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    divergenceLinesRef.current.forEach((line) => chart.removeSeries(line));
+    divergenceLinesRef.current = [];
+
+    divergences.forEach((d) => {
+      const fromCandle = candles[d.fromIndex];
+      const toCandle = candles[d.index];
+      if (!fromCandle || !toCandle) return;
+
+      const price = d.type === "bearish" ? "high" : "low";
+      const line = chart.addSeries(LineSeries, {
+        color: d.type === "bearish" ? "#ff5c5c" : "#6ee06e",
+        lineWidth: 2,
+        lineStyle: 2, // dashed
+        lastValueVisible: false,
+        priceLineVisible: false,
+        crosshairMarkerVisible: false,
+      });
+      line.setData([
+        { time: fromCandle.time as Time, value: fromCandle[price] },
+        { time: toCandle.time as Time, value: toCandle[price] },
+      ]);
+      divergenceLinesRef.current.push(line);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [divergences, candles]);
 
   return (
     <div className="relative w-full">
       <button
         type="button"
-        onClick={() => setShowVolumeProfile((v) => !v)}
+        onClick={() => {
+          setShowVolumeProfile((v) => !v);
+          showVolumeProfileRef.current = !showVolumeProfileRef.current;
+          drawVolumeProfile();
+        }}
         className={`absolute top-0 right-0 z-10 tl-mono text-[10px] px-2 py-1 rounded border transition-colors ${
           showVolumeProfile
             ? "bg-tl-accent text-black border-tl-accent"
