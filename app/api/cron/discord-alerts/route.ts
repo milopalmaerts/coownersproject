@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { marketProvider } from "@/lib/providers";
+import { derivativesProvider, marketProvider } from "@/lib/providers";
 import { evaluatePriceAlerts } from "@/lib/alerts/priceAlerts";
 import { evaluateRoundNumberAlerts } from "@/lib/alerts/roundNumberAlerts";
-import { hasRedisConfig, pushRecentAlerts } from "@/lib/alerts/redis";
+import { hasRedisConfig, pushRecentAlerts, pushFundingSnapshot } from "@/lib/alerts/redis";
 import { hasDiscordWebhook } from "@/lib/alerts/discord";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +13,11 @@ export const maxDuration = 30;
 // thresholds and round-number price levels (e.g. "BTC broke $72,000"),
 // posts new crossings to Discord, and logs what fired so the dashboard can
 // show it too. No news alerts — price moves only, by request.
+//
+// Also snapshots funding rate / open interest per run — Hyperliquid only
+// exposes a live snapshot, so this is the only way to build a history for
+// the funding/OI chart. Runs independently of the Discord-alert gate below
+// (it only needs Redis, not a Discord webhook).
 export async function GET(request: Request) {
   const expectedSecret = process.env.CRON_SECRET;
   const providedSecret = request.headers.get("x-cron-secret");
@@ -20,11 +25,32 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  let snapshotCount = 0;
+  if (hasRedisConfig) {
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const rates = await derivativesProvider.getFundingRates();
+      await Promise.all(
+        rates.map((r) =>
+          pushFundingSnapshot(r.symbol, {
+            time: now,
+            fundingRatePct: r.fundingRatePct,
+            openInterest: r.openInterest,
+          })
+        )
+      );
+      snapshotCount = rates.length;
+    } catch (err) {
+      console.error("[discord-alerts cron] funding snapshot failed", err);
+    }
+  }
+
   if (!hasRedisConfig || !hasDiscordWebhook) {
     return NextResponse.json(
       {
         error:
           "Alert engine not configured — set UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN and DISCORD_WEBHOOK_URL",
+        snapshotted: snapshotCount,
       },
       { status: 503 }
     );
@@ -41,7 +67,7 @@ export async function GET(request: Request) {
     const fired = [...pctAlerts, ...levelAlerts];
     await pushRecentAlerts(fired);
 
-    return NextResponse.json({ fired: fired.length });
+    return NextResponse.json({ fired: fired.length, snapshotted: snapshotCount });
   } catch (err) {
     console.error("[discord-alerts cron] failed", err);
     return NextResponse.json(

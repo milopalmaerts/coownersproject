@@ -56,6 +56,7 @@ export async function evaluateRoundNumberAlerts(
       symbol,
       timestamp: new Date().toISOString(),
       severity: isUp ? "positive" : "negative",
+      priceAtFire: ticker.price,
     };
     fired.push(alert);
 

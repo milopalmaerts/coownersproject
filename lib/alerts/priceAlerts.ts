@@ -79,6 +79,7 @@ export async function evaluatePriceAlerts(
         symbol,
         timestamp: new Date().toISOString(),
         severity: isUp ? "positive" : "negative",
+        priceAtFire: ticker.price,
       };
       fired.push(alert);
 

@@ -110,4 +110,7 @@ export interface LiveAlert {
   symbol?: string;
   timestamp: string; // ISO
   severity: "info" | "positive" | "negative" | "warning";
+  // Price at the moment this alert fired — lets the track-record page show
+  // what actually happened afterward, not just that an alert fired.
+  priceAtFire?: number;
 }

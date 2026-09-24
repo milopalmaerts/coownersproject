@@ -48,7 +48,9 @@ export async function setLastPriceLevel(symbol: string, level: number): Promise<
 // Recent fired alerts, shown read-only on the dashboard — mirrors what was
 // sent to Discord. Newest first, capped to the last 20.
 const RECENT_ALERTS_KEY = "alerts:recent";
-const MAX_RECENT_ALERTS = 20;
+// Was 20 (just enough for the dashboard feed) — bumped so the track-record
+// page has enough history to be meaningful, not just the last few alerts.
+const MAX_RECENT_ALERTS = 250;
 
 export async function pushRecentAlerts(alerts: LiveAlert[]): Promise<void> {
   if (alerts.length === 0) return;
@@ -56,6 +58,36 @@ export async function pushRecentAlerts(alerts: LiveAlert[]): Promise<void> {
   const [first, ...rest] = alerts.map((a) => JSON.stringify(a));
   await client.lpush(RECENT_ALERTS_KEY, first, ...rest);
   await client.ltrim(RECENT_ALERTS_KEY, 0, MAX_RECENT_ALERTS - 1);
+}
+
+// Funding rate / open interest history — Hyperliquid's API only gives a
+// live snapshot, so we build our own history by appending one snapshot per
+// cron run (every ~5 min, same schedule as the alert engine) to a capped
+// list per asset. Capped to 500 points (~1.7 days at 5 min) so the list
+// doesn't grow unbounded.
+const FUNDING_HISTORY_MAX = 500;
+
+export interface FundingSnapshot {
+  time: number; // unix seconds
+  fundingRatePct: number;
+  openInterest: number;
+}
+
+export async function pushFundingSnapshot(symbol: string, snapshot: FundingSnapshot): Promise<void> {
+  const client = getRedis();
+  const key = `history:funding:${symbol}`;
+  await client.lpush(key, JSON.stringify(snapshot));
+  await client.ltrim(key, 0, FUNDING_HISTORY_MAX - 1);
+}
+
+export async function getFundingHistory(symbol: string): Promise<FundingSnapshot[]> {
+  if (!hasRedisConfig) return [];
+  const raw = await getRedis().lrange<string>(`history:funding:${symbol}`, 0, FUNDING_HISTORY_MAX - 1);
+  const parsed = raw.map((entry) =>
+    typeof entry === "string" ? (JSON.parse(entry) as FundingSnapshot) : (entry as FundingSnapshot)
+  );
+  // Stored newest-first (lpush); charts want oldest-first.
+  return parsed.reverse();
 }
 
 export async function pingRedis(): Promise<boolean> {

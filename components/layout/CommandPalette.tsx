@@ -22,6 +22,7 @@ const PAGE_ITEMS: PaletteItem[] = [
   { id: "whales", label: "Whale Alerts", icon: "🐋", href: "/whales", keywords: "large transactions" },
   { id: "liquidations", label: "Liquidations", icon: "⚡", href: "/liquidations", keywords: "funding open interest" },
   { id: "watchlist", label: "Watchlist", icon: "⭐", href: "/watchlist", keywords: "saved favorites" },
+  { id: "track-record", label: "Track Record", icon: "✅", href: "/track-record", keywords: "win rate alerts history verified" },
   { id: "discord", label: "Discord", icon: "💬", href: "/discord", keywords: "community bot" },
   { id: "settings", label: "Settings", icon: "⚙️", href: "/settings", keywords: "configuration status" },
 ];

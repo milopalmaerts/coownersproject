@@ -19,6 +19,8 @@ import { TimeframeSelector } from "@/components/markets/TimeframeSelector";
 import { NewsList } from "@/components/news/NewsList";
 import { WatchlistStarButton } from "@/components/watchlist/WatchlistStarButton";
 import { LiveTradeTape } from "@/components/markets/LiveTradeTape";
+import { FundingHistoryChart } from "@/components/markets/FundingHistoryChart";
+import { getFundingHistory } from "@/lib/alerts/redis";
 import { LivePrice } from "@/components/dashboard/LivePrice";
 import { LivePctBadge } from "@/components/dashboard/LivePctBadge";
 
@@ -69,6 +71,7 @@ export default async function CoinPage({
   const symbolFunding = funding.find(
     (f) => f.symbol.toLowerCase() === symbol.toLowerCase()
   );
+  const fundingHistory = await getFundingHistory(ticker.symbol).catch(() => []);
 
   const cvdSeries = CVD_TIMEFRAMES.includes(timeframe) ? computeCvdSeries(candles) : [];
   const divergences = CVD_TIMEFRAMES.includes(timeframe)
@@ -162,6 +165,28 @@ export default async function CoinPage({
           </>
         )}
       </div>
+
+      {fundingHistory.length >= 2 ? (
+        <Card>
+          <CardHeader title="Funding Rate & Open Interest History" />
+          <p className="text-xs text-tl-text-muted mb-2">
+            Snapshotted every ~5 minutes since this deployment started — no
+            historical API exists for this, so history only goes back as far
+            as this site has been running.
+          </p>
+          <FundingHistoryChart history={fundingHistory} />
+        </Card>
+      ) : (
+        !isDemoMode && (
+          <Card>
+            <CardHeader title="Funding Rate & Open Interest History" />
+            <p className="text-xs text-tl-text-muted">
+              Building history — check back in a bit. Snapshots are taken
+              every ~5 minutes and there&apos;s not enough yet to chart.
+            </p>
+          </Card>
+        )
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <NewsList

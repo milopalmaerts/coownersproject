@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/whales", label: "Whale Alerts", icon: "🐋" },
   { href: "/liquidations", label: "Liquidations", icon: "⚡" },
   { href: "/watchlist", label: "Watchlist", icon: "⭐" },
+  { href: "/track-record", label: "Track Record", icon: "✅" },
   { href: "/discord", label: "Discord", icon: "💬" },
   { href: "/settings", label: "Settings", icon: "⚙️" },
 ];
