@@ -23,6 +23,7 @@ const PAGE_ITEMS: PaletteItem[] = [
   { id: "whales", label: "Whale Alerts", icon: "🐋", href: "/whales", keywords: "large transactions" },
   { id: "liquidations", label: "Liquidations", icon: "⚡", href: "/liquidations", keywords: "funding open interest" },
   { id: "watchlist", label: "Watchlist", icon: "⭐", href: "/watchlist", keywords: "saved favorites" },
+  { id: "journal", label: "Journal", icon: "📓", href: "/journal", keywords: "trades r-multiple psychology review" },
   { id: "portfolio", label: "Portfolio", icon: "💼", href: "/portfolio", keywords: "holdings pnl profit loss" },
   { id: "predictions", label: "Predictions", icon: "🎯", href: "/predictions", keywords: "calls thesis public" },
   { id: "track-record", label: "Track Record", icon: "✅", href: "/track-record", keywords: "win rate alerts history verified" },

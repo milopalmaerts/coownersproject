@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: "/whales", label: "Whale Alerts", icon: "🐋" },
   { href: "/liquidations", label: "Liquidations", icon: "⚡" },
   { href: "/watchlist", label: "Watchlist", icon: "⭐" },
+  { href: "/journal", label: "Journal", icon: "📓" },
   { href: "/portfolio", label: "Portfolio", icon: "💼" },
   { href: "/predictions", label: "Predictions", icon: "🎯" },
   { href: "/track-record", label: "Track Record", icon: "✅" },
