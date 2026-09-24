@@ -50,7 +50,7 @@ export function CvdChart({ candles }: { candles: Candle[] }) {
     chartRef.current = chart;
 
     const series = chart.addSeries(LineSeries, {
-      color: "#c6ff1a",
+      color: "#ff2d2d",
       lineWidth: 2,
     });
     seriesRef.current = series;

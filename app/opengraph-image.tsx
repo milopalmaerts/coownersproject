@@ -31,9 +31,9 @@ export default function OpengraphImage() {
             color: "#eef1ee",
           }}
         >
-          <span style={{ color: "#c6ff1a" }}>{">"}</span>
+          <span style={{ color: "#ff2d2d" }}>{">"}</span>
           <span>
-            TRADING<span style={{ color: "#c6ff1a" }}>LEGENDS</span>
+            TRADING<span style={{ color: "#ff2d2d" }}>LEGENDS</span>
           </span>
         </div>
         <div

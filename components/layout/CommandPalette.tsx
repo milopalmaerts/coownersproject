@@ -16,6 +16,7 @@ interface PaletteItem {
 const PAGE_ITEMS: PaletteItem[] = [
   { id: "dashboard", label: "Dashboard", icon: "📊", href: "/dashboard", keywords: "home overview" },
   { id: "markets", label: "Markets", icon: "📈", href: "/markets", keywords: "table prices" },
+  { id: "heatmap", label: "Heatmap", icon: "🔥", href: "/heatmap", keywords: "treemap performance overview" },
   { id: "news", label: "News", icon: "📰", href: "/news", keywords: "headlines" },
   { id: "calendar", label: "Economic Calendar", icon: "🗓️", href: "/news?view=calendar", keywords: "fomc cpi nfp events" },
   { id: "whales", label: "Whale Alerts", icon: "🐋", href: "/whales", keywords: "large transactions" },

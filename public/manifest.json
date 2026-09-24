@@ -1,0 +1,13 @@
+{
+  "name": "TradingLegends",
+  "short_name": "TradingLegends",
+  "description": "Live crypto market data, whale tracking, news, liquidations and automated alerts — in one terminal.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#08090c",
+  "theme_color": "#ff2d2d",
+  "icons": [
+    { "src": "/icon", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
