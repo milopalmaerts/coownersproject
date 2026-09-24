@@ -4,6 +4,7 @@ import { evaluatePriceAlerts } from "@/lib/alerts/priceAlerts";
 import { evaluateRoundNumberAlerts } from "@/lib/alerts/roundNumberAlerts";
 import { hasRedisConfig, pushRecentAlerts, pushFundingSnapshot } from "@/lib/alerts/redis";
 import { hasDiscordWebhook } from "@/lib/alerts/discord";
+import { broadcastPush, hasVapidConfig } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -67,7 +68,15 @@ export async function GET(request: Request) {
     const fired = [...pctAlerts, ...levelAlerts];
     await pushRecentAlerts(fired);
 
-    return NextResponse.json({ fired: fired.length, snapshotted: snapshotCount });
+    let pushed = 0;
+    if (hasVapidConfig && fired.length > 0) {
+      const counts = await Promise.all(
+        fired.map((a) => broadcastPush("TradingLegends Alert", a.message, `/markets/${a.symbol}`))
+      );
+      pushed = Math.max(...counts, 0);
+    }
+
+    return NextResponse.json({ fired: fired.length, snapshotted: snapshotCount, pushedTo: pushed });
   } catch (err) {
     console.error("[discord-alerts cron] failed", err);
     return NextResponse.json(

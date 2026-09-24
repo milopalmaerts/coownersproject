@@ -7,12 +7,16 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "📊" },
   { href: "/markets", label: "Markets", icon: "📈" },
   { href: "/heatmap", label: "Heatmap", icon: "🔥" },
+  { href: "/scanner", label: "Scanner", icon: "🔎" },
   { href: "/news", label: "News", icon: "📰" },
   { href: "/whales", label: "Whale Alerts", icon: "🐋" },
   { href: "/liquidations", label: "Liquidations", icon: "⚡" },
   { href: "/watchlist", label: "Watchlist", icon: "⭐" },
+  { href: "/portfolio", label: "Portfolio", icon: "💼" },
+  { href: "/predictions", label: "Predictions", icon: "🎯" },
   { href: "/track-record", label: "Track Record", icon: "✅" },
   { href: "/discord", label: "Discord", icon: "💬" },
+  { href: "/docs", label: "API Docs", icon: "📄" },
   { href: "/settings", label: "Settings", icon: "⚙️" },
 ];
 

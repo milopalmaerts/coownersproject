@@ -17,13 +17,17 @@ const PAGE_ITEMS: PaletteItem[] = [
   { id: "dashboard", label: "Dashboard", icon: "📊", href: "/dashboard", keywords: "home overview" },
   { id: "markets", label: "Markets", icon: "📈", href: "/markets", keywords: "table prices" },
   { id: "heatmap", label: "Heatmap", icon: "🔥", href: "/heatmap", keywords: "treemap performance overview" },
+  { id: "scanner", label: "Scanner", icon: "🔎", href: "/scanner", keywords: "confluence signals divergence whale funding" },
   { id: "news", label: "News", icon: "📰", href: "/news", keywords: "headlines" },
   { id: "calendar", label: "Economic Calendar", icon: "🗓️", href: "/news?view=calendar", keywords: "fomc cpi nfp events" },
   { id: "whales", label: "Whale Alerts", icon: "🐋", href: "/whales", keywords: "large transactions" },
   { id: "liquidations", label: "Liquidations", icon: "⚡", href: "/liquidations", keywords: "funding open interest" },
   { id: "watchlist", label: "Watchlist", icon: "⭐", href: "/watchlist", keywords: "saved favorites" },
+  { id: "portfolio", label: "Portfolio", icon: "💼", href: "/portfolio", keywords: "holdings pnl profit loss" },
+  { id: "predictions", label: "Predictions", icon: "🎯", href: "/predictions", keywords: "calls thesis public" },
   { id: "track-record", label: "Track Record", icon: "✅", href: "/track-record", keywords: "win rate alerts history verified" },
   { id: "discord", label: "Discord", icon: "💬", href: "/discord", keywords: "community bot" },
+  { id: "docs", label: "API Docs", icon: "📄", href: "/docs", keywords: "api endpoints public developer" },
   { id: "settings", label: "Settings", icon: "⚙️", href: "/settings", keywords: "configuration status" },
 ];
 

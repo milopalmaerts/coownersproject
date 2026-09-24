@@ -8,6 +8,8 @@ import { signOutAction } from "@/lib/auth/actions";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { ProviderHealthSection } from "@/components/settings/ProviderHealthSection";
+import { PushNotificationToggle } from "@/components/settings/PushNotificationToggle";
+import { hasVapidConfig } from "@/lib/push";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 
 export default async function SettingsPage() {
@@ -78,6 +80,15 @@ export default async function SettingsPage() {
             DISCORD_WEBHOOK_URL, then schedule GET /api/cron/discord-alerts
             (with header x-cron-secret) every few minutes — see README.
           </p>
+        )}
+        {hasVapidConfig && hasRedisConfig && (
+          <div className="mt-4 pt-4 border-t border-tl-border">
+            <p className="text-sm text-tl-text-secondary mb-2">
+              Also get the same price alerts as a browser notification —
+              global, same as Discord, not tied to your account.
+            </p>
+            <PushNotificationToggle vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!} />
+          </div>
         )}
       </Card>
 
